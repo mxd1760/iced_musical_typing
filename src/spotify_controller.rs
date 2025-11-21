@@ -57,8 +57,8 @@ impl SpotifyController {
         Ok(access_token.to_string())
     }
 
-    pub fn get_devices() {
-        todo!();
+    pub fn get_devices() -> anyhow::Result<Vec<(String,String)> {
+        
     }
 
     pub fn search_by_title() {
