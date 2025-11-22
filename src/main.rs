@@ -149,6 +149,7 @@ impl TypingGame {
                 let controller = controller.clone();
                 return Task::perform(
                   async move {
+                    // controller.lock().await.play(Some("spotify:track:4rQA8VIjP9YhjvDiZgAgOx".into())).await.map_err(|e| e.to_string()) // turn to ashes
                     controller.lock().await.play(None).await.map_err(|e| e.to_string())
                   },
                   |out|Message::APIResult("play".into(),out)

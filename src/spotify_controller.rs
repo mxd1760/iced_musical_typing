@@ -89,25 +89,42 @@ impl SpotifyController {
 
         let access_token = self.get_access_token().await?;
         let client = reqwest::Client::new();
-        let url = "https://api.spotify.com/v1/me/player/play";
+        let url = "https://api.spotify.com/v1/me/player";
         let mut body = serde_json::json!({});
-        if let Some(track_uri) = track_uri_option {
-            body = serde_json::json!({
-                "uris": [track_uri],
-                "device_id":self.device_id,
-                "play":true
-            });
-        }
+        body = serde_json::json!({
+          "device_ids":[self.device_id],
+          "play":true
+        });
+        
 
         let res = client
             .put(url)
-            .bearer_auth(access_token)
+            .bearer_auth(access_token.clone())
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
             .await?;
 
         println!("Response {:#?}", res.status());
+
+        
+        if let Some(track_uri) = track_uri_option {
+            let url = "https://api.spotify.com/v1/me/player/play";
+            let mut body2 = serde_json::json!({});
+            body2 = serde_json::json!({
+                "uris":[track_uri],
+                "play":true
+            });
+
+            let res = client
+            .put(url)
+            .bearer_auth(access_token)
+            .header("Content-Type", "application/json")
+            .json(&body2)
+            .send()
+            .await?;
+            println!("2nd Response {:#?}", res.status());
+        }
         Ok(())
     }
 
