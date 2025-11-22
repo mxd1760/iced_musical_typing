@@ -1,6 +1,6 @@
 use iced::{
     Element, Subscription, Task, Theme, time,
-    widget::{button, column, row, text, text_input},
+    widget::{Column, button, column, row, text, text_input},
 };
 use rand::Rng;
 use std::{
@@ -44,8 +44,9 @@ enum Message {
     SpotifyPlay,
     SpotifyPause,
     SpotifyDevices,
+    SpotifySetDevice(String),
     APIResult(String,Result<(),String>),
-    DevicesResult(Result<Vec<String>,String>)
+    DevicesResult(Result<Vec<(String,String)>,String>)
 }
 
 
@@ -191,6 +192,19 @@ impl TypingGame {
                 Err(_) => todo!(),
             },
             Message::Tick(instant) => (),
+            Message::DevicesResult(items) => match items{
+                Ok(items) => self.spotify_data.devices_list=items,
+                Err(e) => log::error!("could not fetch devices {}",e),
+            },
+            Message::SpotifySetDevice(new_device_id) => if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle{
+                let controller = controller.clone();
+                return Task::perform(
+                  async move {
+                    controller.lock().await.set_device_id(new_device_id);
+                  },
+                  |_| Message::APIResult("set_device".into(), Ok(()))
+                );
+            },
         }
         Task::none()
     }
@@ -204,8 +218,11 @@ impl TypingGame {
             .count();
         if let SpotifyControllerHandle::Ready(_controller) = &self.spotify_controller_handle {
             let matching_substr = &self.target[0..num_matching];
-            let remaining_substr = &self.target[num_matching..self.target.len()];
-            let list_items = column![];
+            let remaining_substr = &self.target[num_matching..];
+            let mut devices_ui = Column::new().padding(10).spacing(10);
+            for device in &self.spotify_data.devices_list {
+                devices_ui = devices_ui.push(button(text(device.0.clone())).on_press(Message::SpotifySetDevice(device.1.clone())));
+            }
             column![
                 row![
                     button("Play").on_press(Message::SpotifyPlay),
@@ -220,7 +237,7 @@ impl TypingGame {
                 text_input("Start typing...", &self.input).on_input(Message::InputChanged),
                 text(format!("Score: {}", self.score)),
                 button("Refresh Devices").on_press(Message::SpotifyDevices),
-                list_items
+                devices_ui
             ]
             .into()
         } else {
