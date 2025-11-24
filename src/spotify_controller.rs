@@ -1,10 +1,12 @@
-use iced::futures::TryFutureExt;
+use std::collections::HashMap;
+
 use rspotify::{prelude::*,AuthCodeSpotify, OAuth,Credentials};
 
 
 #[derive(Debug)]
 pub struct SpotifyController{
   spotify:AuthCodeSpotify,
+  device_id:String,
 }
 
 pub struct Song{
@@ -39,11 +41,16 @@ impl SpotifyController {
 
         Ok(Self {
             spotify,
+            device_id:"".into(),
         })
     }
 
     pub async fn init_from_env(oauth: OAuth) -> anyhow::Result<Self> {
         Self::init(Credentials::from_env().unwrap(), oauth).await
+    }
+
+    pub fn set_device_id(&mut self, new_id:String){
+      self.device_id = new_id;
     }
 
     pub async fn get_access_token(&self)->anyhow::Result<String>{
@@ -57,40 +64,71 @@ impl SpotifyController {
         Ok(access_token.to_string())
     }
 
-    pub fn get_devices() {
-        todo!();
+    pub async fn get_devices(&self) -> anyhow::Result<Vec<(String,String)>> {
+        let access_token = self.get_access_token().await?;
+        let client = reqwest::Client::new();
+        let url = "https://api.spotify.com/v1/me/player/devices";
+
+        let res:reqwest::Response = client
+            .get(url)
+            .bearer_auth(access_token)
+            .header("Content-Length", 0)
+            .send()
+            .await?;
+
+        println!("Response {:#?}", res.status());
+        Ok(parse_devices_response(res).await)
     }
+
 
     pub fn search_by_title() {
         todo!();
     }
 
-    pub async fn play(&mut self, track_uri_option: Option<String>) -> anyhow::Result<()> {
+    pub async fn play(&self, track_uri_option: Option<String>) -> anyhow::Result<()> {
 
         let access_token = self.get_access_token().await?;
         let client = reqwest::Client::new();
-        let url = "https://api.spotify.com/v1/me/player/play";
+        let url = "https://api.spotify.com/v1/me/player";
         let mut body = serde_json::json!({});
-        if let Some(track_uri) = track_uri_option {
-            body = serde_json::json!({
-                "uris": [track_uri]
-            });
-        }
+        body = serde_json::json!({
+          "device_ids":[self.device_id],
+          "play":true
+        });
+        
 
         let res = client
             .put(url)
-            .bearer_auth(access_token)
+            .bearer_auth(access_token.clone())
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
             .await?;
 
         println!("Response {:#?}", res.status());
+
+        
+        if let Some(track_uri) = track_uri_option {
+            let url = "https://api.spotify.com/v1/me/player/play";
+            let mut body2 = serde_json::json!({});
+            body2 = serde_json::json!({
+                "uris":[track_uri],
+                "play":true
+            });
+
+            let res = client
+            .put(url)
+            .bearer_auth(access_token)
+            .header("Content-Type", "application/json")
+            .json(&body2)
+            .send()
+            .await?;
+            println!("2nd Response {:#?}", res.status());
+        }
         Ok(())
     }
 
-    pub async fn pause(&mut self) -> anyhow::Result<()> {
-
+    pub async fn pause(&self) -> anyhow::Result<()> {
         let access_token = self.get_access_token().await?;
         let client = reqwest::Client::new();
         let url = "https://api.spotify.com/v1/me/player/pause";
@@ -125,4 +163,35 @@ impl SpotifyController {
     pub fn change_account() {
         todo!();
     }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SpotifyDevice{
+  id:String,
+  is_active:bool,
+  is_private_session:bool,
+  is_restricted:bool,
+  name:String,
+  supports_volume:bool,
+  #[serde(rename = "type")]
+  _type:String,
+  volume_percent:i32,
+}
+
+async fn parse_devices_response(res: reqwest::Response)->Vec<(String,String)>{
+  let map = match res.json::<HashMap<String,Vec<SpotifyDevice>>>().await {
+    Ok(map) => map,
+    Err(s) => {
+      log::error!("error parsing response: {}",s);
+      return vec![];
+    }
+  };
+  let devices = match map.get("devices") {
+    Some(devices) => devices,
+    None => {
+      log::warn!("could not fetch devices");
+      return vec![];
+    }
+  };
+  devices.iter().map(|v|(v.name.clone(),v.id.clone())).collect()
 }
