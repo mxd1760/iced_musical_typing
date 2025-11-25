@@ -1,6 +1,5 @@
 use iced::{
-    Element, Subscription, Task, Theme, time,
-    widget::{Column, button, column, row, text, text_input},
+    Element, Font, Settings, Subscription, Task, Theme, time, widget::{Column, button, column, row, text, text_input}
 };
 use rand::Rng;
 use std::{
@@ -12,6 +11,7 @@ use tokio::sync::Mutex;
 mod spotify_controller;
 mod text_controller;
 use spotify_controller::SpotifyController;
+use spotify_controller::Song;
 
 
 struct TypingGame {
@@ -28,11 +28,16 @@ enum SpotifyControllerHandle{
   Failed(String)
 }
 
-#[derive(Default)]
+
 struct SpotifyData{
   pub is_playing:bool,
   pub devices_list:Vec<(String,String)>,
-  
+  pub songs_list:Vec<Song>
+}
+impl Default for SpotifyData{
+    fn default() -> Self {
+        Self { is_playing: Default::default(), devices_list: Default::default(), songs_list: Song::mock_songs() }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +51,8 @@ enum Message {
     SpotifyDevices,
     SpotifySetDevice(String),
     APIResult(String,Result<(),String>),
-    DevicesResult(Result<Vec<(String,String)>,String>)
+    DevicesResult(Result<Vec<(String,String)>,String>),
+    SpotifyChangeSong(String),
 }
 
 
@@ -59,9 +65,18 @@ impl Default for TypingGame {
     }
 }
 
+const MY_FONT: Font = Font::with_name("BIZ UDGothic");
+
+
+
 pub fn main() -> iced::Result {
     env_logger::init();
+    // let file_path = format!("{}/fonts/BIZ-UDMINCHOM.TTC", env!("CARGO_MANIFEST_DIR"));
+    // let full_font = include_bytes!("../fonts/BIZ-UDMINCHOM.TTC").as_slice();
+    let full_font = include_bytes!("../fonts/BIZ-UDGOTHICR.TTC").as_slice();
     iced::application("Typing Game", TypingGame::update, TypingGame::view)
+        .font(full_font)
+        .default_font(MY_FONT)
         .subscription(TypingGame::subscription)
         .theme(TypingGame::theme)
         .run_with(TypingGame::new)
@@ -143,19 +158,19 @@ impl TypingGame {
                         Message::UpdateTarget,
                     );
                 }
-            },
+            }
             Message::SpotifyPlay => {
               if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle {
                 let controller = controller.clone();
                 return Task::perform(
                   async move {
                     // controller.lock().await.play(Some("spotify:track:4rQA8VIjP9YhjvDiZgAgOx".into())).await.map_err(|e| e.to_string()) // turn to ashes
-                    controller.lock().await.play(None).await.map_err(|e| e.to_string())
+                    controller.lock().await.play().await.map_err(|e| e.to_string())
                   },
                   |out|Message::APIResult("play".into(),out)
                 );
               }
-            },
+            }
             Message::SpotifyPause => {
               if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle {
                 let controller = controller.clone();
@@ -166,7 +181,7 @@ impl TypingGame {
                   |out|Message::APIResult("pause".into(),out)
                 );
               }
-            },
+            }
             Message::SpotifyDevices => {
               if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle {
                 let controller = controller.clone();
@@ -177,7 +192,7 @@ impl TypingGame {
                   Message::DevicesResult
                 );
               }
-            },
+            }
             Message::APIResult(kind,result) => match result{
               Err(e) => println!("API Error: {}",e),
               Ok(_)=>{
@@ -187,17 +202,18 @@ impl TypingGame {
                   _=>{}
                 }
               }
-            },
+            }
             Message::Initialized(result) => match result{
                 Ok(mutex) => self.spotify_controller_handle = SpotifyControllerHandle::Ready(mutex),
                 Err(_) => todo!(),
-            },
+            }
             Message::Tick(instant) => (),
             Message::DevicesResult(items) => match items{
                 Ok(items) => self.spotify_data.devices_list=items,
                 Err(e) => log::error!("could not fetch devices {}",e),
-            },
-            Message::SpotifySetDevice(new_device_id) => if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle{
+            }
+            Message::SpotifySetDevice(new_device_id) => 
+              if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle{
                 let controller = controller.clone();
                 return Task::perform(
                   async move {
@@ -205,8 +221,18 @@ impl TypingGame {
                   },
                   |_| Message::APIResult("set_device".into(), Ok(()))
                 );
-            },
-        }
+            }
+            Message::SpotifyChangeSong(new_song_id) =>  
+              if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle{          
+                let controller = controller.clone();
+                return Task::perform(
+                  async move {
+                    controller.lock().await.set_song_id(new_song_id);
+                  },
+                  |_| Message::APIResult("set_song_id".into(), Ok(()))
+                );
+              }
+            }
         Task::none()
     }
 
@@ -224,7 +250,12 @@ impl TypingGame {
             for device in &self.spotify_data.devices_list {
                 devices_ui = devices_ui.push(button(text(device.0.clone())).on_press(Message::SpotifySetDevice(device.1.clone())));
             }
-            column![
+            let mut songs_ui = Column::new().padding(10).spacing(10);
+            for song in &self.spotify_data.songs_list {
+                songs_ui = songs_ui.push(button(text(song.name.clone())).on_press(Message::SpotifyChangeSong(song.id.clone())))
+            }
+            row![
+              column![
                 row![
                     button("Play").on_press(Message::SpotifyPlay),
                     button("Pause").on_press(Message::SpotifyPause)
@@ -237,8 +268,15 @@ impl TypingGame {
                 ],
                 text_input("Start typing...", &self.input).on_input(Message::InputChanged),
                 text(format!("Score: {}", self.score)),
-                button("Refresh Devices").on_press(Message::SpotifyDevices),
+                
+              ],
+              column![
+                text("Songs"),
+                songs_ui,
+                text("Devices"),
+                button("Refresh Spotify Devices").on_press(Message::SpotifyDevices),
                 devices_ui
+              ]
             ]
             .into()
         } else {

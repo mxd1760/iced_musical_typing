@@ -7,10 +7,34 @@ use rspotify::{prelude::*,AuthCodeSpotify, OAuth,Credentials};
 pub struct SpotifyController{
   spotify:AuthCodeSpotify,
   device_id:String,
+  song_id:Option<String>,
 }
 
 pub struct Song{
+  pub name:String,
+  pub id:String,
+  // artists:Vec<Artist>,
+}
 
+impl Song{
+  pub fn mock_songs() -> Vec<Song>{
+    vec![
+      Song{name:"Yumeyume".into(),id:"05ReuhxWC85vxG530BGty7".into()},
+      Song{name:"Crazy for you".into(),id:"0xIW9Iex1ziifoFcRL1JVS".into()},
+      Song{name:"仮死化".into(),id:"4sVdacv8Qflef5SDiYXUpg".into()},
+      Song{name:"メリュー".into(),id:"6Tl3V1vOgah4pAwXUGeuI3".into()},
+      Song{name:"Golden".into(),id:"1CPZ5BxNNd0n0nF4Orb9JS".into()},
+      Song{name:"mr brightside".into(),id:"003vvx7Niy0yvhvHt4a68B".into()},
+      Song{name:"100 bad days".into(),id:"4rnyUV17cSZGsz18xJNdjL".into()},
+      Song{name:"115".into(),id:"725NSbIej5lP3GfhLC7So3".into()},
+      Song{name:"Nobody".into(),id:"3SiVMpHxTS1gspWzRZE50S".into()}
+  ]
+  }
+}
+
+pub struct Artist{
+  name:String,
+  id:String,
 }
 
 impl SpotifyController {
@@ -42,6 +66,7 @@ impl SpotifyController {
         Ok(Self {
             spotify,
             device_id:"".into(),
+            song_id:None
         })
     }
 
@@ -51,6 +76,9 @@ impl SpotifyController {
 
     pub fn set_device_id(&mut self, new_id:String){
       self.device_id = new_id;
+    }
+    pub fn set_song_id(&mut self, new_id:String){
+      self.song_id = Some(new_id);
     }
 
     pub async fn get_access_token(&self)->anyhow::Result<String>{
@@ -85,7 +113,7 @@ impl SpotifyController {
         todo!();
     }
 
-    pub async fn play(&self, track_uri_option: Option<String>) -> anyhow::Result<()> {
+    pub async fn play(&mut self) -> anyhow::Result<()> {
 
         let access_token = self.get_access_token().await?;
         let client = reqwest::Client::new();
@@ -108,11 +136,11 @@ impl SpotifyController {
         println!("Response {:#?}", res.status());
 
         
-        if let Some(track_uri) = track_uri_option {
+        if let Some(track_uri) = &self.song_id {
             let url = "https://api.spotify.com/v1/me/player/play";
             let mut body2 = serde_json::json!({});
             body2 = serde_json::json!({
-                "uris":[track_uri],
+                "uris":[format!("spotify:track:{}",track_uri)],
                 "play":true
             });
 
@@ -125,6 +153,7 @@ impl SpotifyController {
             .await?;
             println!("2nd Response {:#?}", res.status());
         }
+        self.song_id = None;
         Ok(())
     }
 
