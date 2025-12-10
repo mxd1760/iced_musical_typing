@@ -162,16 +162,15 @@ impl SpotifyController {
         Ok(parse_devices_response(res).await)
     }
 
-    pub fn search_by_title() {
-        todo!();
-    }
+    // pub fn search_by_title() {
+    //     todo!();
+    // }
 
     pub async fn play(&mut self) -> anyhow::Result<()> {
         let access_token = self.get_access_token().await?;
         let client = reqwest::Client::new();
         let url = "https://api.spotify.com/v1/me/player";
-        let mut body = serde_json::json!({});
-        body = serde_json::json!({
+        let body = serde_json::json!({
           "device_ids":[self.device_id],
           "play":true
         });
@@ -188,8 +187,7 @@ impl SpotifyController {
 
         if let Some(track_uri) = &self.song_id {
             let url = "https://api.spotify.com/v1/me/player/play";
-            let mut body2 = serde_json::json!({});
-            body2 = serde_json::json!({
+            let body2 = serde_json::json!({
                 "uris":[format!("spotify:track:{}",track_uri)],
                 "play":true
             });
@@ -223,38 +221,43 @@ impl SpotifyController {
         Ok(())
     }
 
-    pub fn skip() {
-        todo!();
-    }
+    // pub fn skip() {
+    //     todo!();
+    // }
 
-    pub fn back() {
-        todo!();
-    }
+    // pub fn back() {
+    //     todo!();
+    // }
 
-    pub fn shuffle() {
-        todo!();
-    }
+    // pub fn shuffle() {
+    //     todo!();
+    // }
 
-    pub fn replay() {
-        todo!();
-    }
+    // pub fn replay() {
+    //     todo!();
+    // }
 
-    pub fn change_account() {
-        todo!();
-    }
+    // pub fn change_account() {
+    //     todo!();
+    // }
 }
 
 #[derive(Debug, serde::Deserialize)]
 struct SpotifyDevice {
     id: String,
-    is_active: bool,
-    is_private_session: bool,
-    is_restricted: bool,
+    #[serde(rename = "is_active")]
+    _is_active: bool,
+    #[serde(rename = "is_private_session")]
+    _is_private_session: bool,
+    #[serde(rename = "is_restricted")]
+    _is_restricted: bool,
     name: String,
-    supports_volume: bool,
+    #[serde(rename = "supports_volume")]
+    _supports_volume: bool,
     #[serde(rename = "type")]
     _type: String,
-    volume_percent: i32,
+    #[serde(rename = "volume_percent")]
+    _volume_percent: i32,
 }
 
 async fn parse_devices_response(res: reqwest::Response) -> Vec<(String, String)> {

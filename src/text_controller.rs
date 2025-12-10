@@ -5,9 +5,7 @@ use std::{
     thread,
 };
 
-use iced::futures::TryFutureExt;
-
-use crate::{TextControllerData, TextType};
+use crate::TextType;
 
 #[derive(Debug, Clone)]
 pub struct TextController {
@@ -33,13 +31,12 @@ impl TextController {
         if index > self.loaded_lyrics.len() {
             None
         } else {
-            let index_end = index+NUM_LINES;
-            if index_end>self.loaded_lyrics.len(){
-              Some(self.loaded_lyrics[index..].to_vec())
-            }else{
-              Some(self.loaded_lyrics[index..index + NUM_LINES].to_vec())
+            let index_end = index + NUM_LINES;
+            if index_end > self.loaded_lyrics.len() {
+                Some(self.loaded_lyrics[index..].to_vec())
+            } else {
+                Some(self.loaded_lyrics[index..index + NUM_LINES].to_vec())
             }
-            
         }
     }
 
@@ -59,7 +56,7 @@ impl TextController {
                 },
                 None => false,
             },
-            TextType::Github => todo!(),
+            // TextType::Github => todo!(),
             TextType::ThisProject => {
                 match load_new_lines(format!("{}/src/main.rs", env!("CARGO_MANIFEST_DIR"))).await {
                     Ok(v) => {
@@ -106,20 +103,24 @@ async fn load_new_lines(file_name: impl Into<PathBuf>) -> anyhow::Result<Vec<Str
 #[derive(Debug, serde::Deserialize)]
 
 struct LrclibObj {
-    id: i32,
-    name: String,
+    #[serde(rename = "id")]
+    _id: i32,
+    #[serde(rename = "name")]
+    _name: String,
     #[serde(rename = "trackName")]
-    track_name: String,
+    _track_name: String,
     #[serde(rename = "artistName")]
-    artist_name: String,
+    _artist_name: String,
     #[serde(rename = "albumName")]
-    album_name: String,
-    duration: f32,
-    instrumental: bool,
+    _album_name: String,
+    #[serde(rename = "duration")]
+    _duration: f32,
+    #[serde(rename = "instrumental")]
+    _instrumental: bool,
     #[serde(rename = "plainLyrics")]
     plain_lyrics: Option<String>,
     #[serde(rename = "syncedLyrics")]
-    synced_lyrics: Option<String>,
+    _synced_lyrics: Option<String>,
 }
 
 async fn get_lrclib_lyrics(query: String) -> anyhow::Result<Vec<String>> {
@@ -132,11 +133,13 @@ async fn get_lrclib_lyrics(query: String) -> anyhow::Result<Vec<String>> {
     // get plainLyrics
     let plain_lyrics = parse_lrclib_response(res).await.unwrap(); //?;//TODO
 
-    Ok(plain_lyrics
+    Ok(
+        plain_lyrics
         .split('\n')
         .filter(|v| !v.is_empty())
-        .map(|v| (v.to_owned() + " "))
-        .collect())
+        .map(|v| v.to_owned() + " ")
+        .collect()
+    )
 }
 
 async fn parse_lrclib_response(res: reqwest::Response) -> anyhow::Result<String> {
