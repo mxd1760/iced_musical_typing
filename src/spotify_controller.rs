@@ -73,23 +73,23 @@ impl Song {
             Song {
                 name: "Timber".into(),
                 id: "3cHyrEgdyYRjgJKSOiOtcS".into(),
-                artist: "Pitbull".into()
+                artist: "Pitbull".into(),
             },
-            Song{
-              name:"I Want It That Way".into(),
-              id: "47BBI51FKFwOMlIiX6m8ya".into(),
-              artist:"Backstreet Boys".into()
+            Song {
+                name: "I Want It That Way".into(),
+                id: "47BBI51FKFwOMlIiX6m8ya".into(),
+                artist: "Backstreet Boys".into(),
             },
-            Song{
-              name:"Shivers".into(),
-              id: "78AjaULHLHTUs2UhaTCM8N".into(),
-              artist:"Ed Sheeran".into()
+            Song {
+                name: "Shivers".into(),
+                id: "78AjaULHLHTUs2UhaTCM8N".into(),
+                artist: "Ed Sheeran".into(),
             },
-            Song{
-              name:"It Ends Tonight".into(),
-              id: "1FMHNVeJ9s1x1l1WlaRs2I".into(),
-              artist:"The All-American Rejects".into()
-            }
+            Song {
+                name: "It Ends Tonight".into(),
+                id: "1FMHNVeJ9s1x1l1WlaRs2I".into(),
+                artist: "The All-American Rejects".into(),
+            },
         ]
     }
 }

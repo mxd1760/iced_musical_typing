@@ -1,7 +1,9 @@
 use iced::{
     Element, Font, Settings, Subscription, Task, Theme, time,
     widget::{Column, Text, button, column, row, text, text_input},
+    window::{self, icon::Icon},
 };
+use image::GenericImageView;
 use rand::Rng;
 use std::sync::Arc;
 use std::{
@@ -121,7 +123,7 @@ enum Message {
     SetSourceFileText,
     NextLyricBatch,
     SkipLine,
-    ResetText,
+    LoadNewText,
     UpdateText(TextControllerData),
 }
 
@@ -140,11 +142,23 @@ const MY_FONT: Font = Font::with_name("Noto Sans CJK JP");
 
 pub fn main() -> iced::Result {
     env_logger::init();
-    let full_font = include_bytes!("../fonts/NotoSansCJKjp-Regular.otf").as_slice();
+    let full_font = include_bytes!("../assets/fonts/NotoSansCJKjp-Regular.otf").as_slice();
+
+    let icon_bytes = include_bytes!("../assets/icon.png");
+    let icon_img = image::load_from_memory(icon_bytes).expect("Failed to load icon");
+    let icon_raw = icon_img.to_rgba8().into_raw();
+    let (width, height) = icon_img.dimensions();
+    println!("debug: w={} h={} raw_len={}", width, height, icon_raw.len());
+    let icon = iced::window::icon::from_rgba(icon_raw, width, height).expect("Invalid icon");
+
     iced::application("Typing Game", TypingGame::update, TypingGame::view)
         .font(full_font)
         .default_font(MY_FONT)
         .subscription(TypingGame::subscription)
+        .window(window::Settings {
+            icon: Some(icon),
+            ..Default::default()
+        })
         .theme(TypingGame::theme)
         .run_with(TypingGame::new)
 }
@@ -331,39 +345,44 @@ impl TypingGame {
             }
             Message::SetLRCLIBText => {
                 self.text_controller_data.text_type = TextType::LRCLIB;
-                return Task::done(Message::ResetText);
+                return Task::done(Message::LoadNewText);
             }
             Message::SetGithubText => {
                 self.text_controller_data.text_type = TextType::Github;
-                return Task::done(Message::ResetText);
+                return Task::done(Message::LoadNewText);
             }
             Message::SetSourceFileText => {
                 self.text_controller_data.text_type = TextType::ThisProject;
-                return Task::done(Message::ResetText);
+                return Task::done(Message::LoadNewText);
             }
             Message::NextLyricBatch => {
-                if let TextControllerHandle::Ready(_controller) = &self.text_controller_handle {
-                    // let controller = controller.clone();
+                if let TextControllerHandle::Ready(controller) = &self.text_controller_handle {
+                    let controller = controller.clone();
                     let data = self.text_controller_data.clone();
-                    let current_song = self.spotify_data.current_song.clone();
                     return Task::perform(
                         async move {
-                            TextController::get_new_data(
-                                data.text_type.clone(),
-                                data.next_fetch_line,
-                                match data.text_type {
-                                    TextType::LRCLIB => {
-                                        if let Some(song) = current_song {
-                                            Some(song.name + " " + song.artist.as_str())
-                                        } else {
-                                            None
-                                        }
-                                    }
-                                    TextType::Github => todo!(),
-                                    TextType::ThisProject => None,
-                                },
-                            )
-                            .await
+                            let mut text_controller = controller.lock().await;
+                            let lyrics = match text_controller
+                                .fetch_lyrics(data.next_fetch_line as usize)
+                                .await
+                            {
+                                Some(v) => v,
+                                None => vec![
+                                    "No more lyrics".into(),
+                                    "Please load some more".into(),
+                                    "No more lyrics".into(),
+                                    "Please load some more".into(),
+                                    "No more lyrics".into(),
+                                    "Please load some more".into(),
+                                ],
+                            };
+                            TextControllerData {
+                                text_type: data.text_type,
+                                lyrics,
+                                current_line: 0,
+                                next_fetch_line: data.next_fetch_line
+                                    + text_controller::NUM_LINES as i32,
+                            }
                         },
                         Message::UpdateText,
                     );
@@ -375,9 +394,29 @@ impl TypingGame {
                     return Task::done(Message::NextLyricBatch);
                 }
             }
-            Message::ResetText => {
+            Message::LoadNewText => {
+                self.text_controller_data.current_line = 0;
                 self.text_controller_data.next_fetch_line = 0;
-                return Task::done(Message::NextLyricBatch);
+                if let TextControllerHandle::Ready(controller) = &self.text_controller_handle {
+                    let controller = controller.clone();
+                    let data = self.text_controller_data.clone();
+                    let current_song = self.spotify_data.current_song.clone();
+                    return Task::perform(
+                        async move {
+                            let mut text_controller = controller.lock().await;
+                            let settings = match data.text_type {
+                                TextType::LRCLIB => match current_song {
+                                    Some(song) => Some(song.name + " " + song.artist.as_str()),
+                                    None => None,
+                                },
+                                TextType::Github => todo!(),
+                                TextType::ThisProject => None,
+                            };
+                            text_controller.load_lyrics(data.text_type, settings).await;
+                        },
+                        |_| Message::NextLyricBatch,
+                    );
+                }
             }
             Message::UpdateText(data) => self.text_controller_data = data,
         }

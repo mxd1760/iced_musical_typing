@@ -10,113 +10,76 @@ use iced::futures::TryFutureExt;
 use crate::{TextControllerData, TextType};
 
 #[derive(Debug, Clone)]
-pub struct TextController {}
+pub struct TextController {
+    loaded_lyrics: Vec<String>,
+}
 
 impl Default for TextController {
     fn default() -> Self {
-        Self {}
+        Self {
+            loaded_lyrics: vec![],
+        }
     }
 }
 
-const NUM_LINES: i32 = 15;
+pub const NUM_LINES: usize = 20;
 
 impl TextController {
     pub async fn init() -> Self {
         Self::default()
     }
 
-    pub async fn get_new_data(
-        mode: TextType,
-        index: i32,
-        song_name: Option<String>,
-    ) -> TextControllerData {
-        match mode {
-            TextType::LRCLIB => {
-                let lyrics: Vec<String> = match song_name {
-                    Some(query) => {
-                        match get_lrclib_lyrics(query, index as usize, (index + NUM_LINES) as usize)
-                            .await{
-                                Ok(v) => if v.is_empty() {
-                                    vec![
-                                      "No more lyrics".into(),
-                                      "All the lyrics are gone".into(),
-                                      "No more lyrics".into(),
-                                      "All the lyrics are gone".into(),
-                                      "No more lyrics".into(),
-                                    ]
-                                }else{
-                                  v
-                                },
-                                Err(_) => vec![
-                                "Something went wrong".into(),
-                                "LRCLIB fetch failed".into(),
-                                "Something went wrong".into(),
-                                "LRCLIB fetch failed".into(),
-                                "Something went wrong".into(),
-                            ],
-                            }
-                    }
-                    None => {
-                        vec![
-                            "Something went wrong".into(),
-                            "You have no current song".into(),
-                            "Something went wrong".into(),
-                            "You have no current song".into(),
-                            "Something went wrong".into(),
-                        ]
-                    }
-                };
-                TextControllerData {
-                    text_type: TextType::LRCLIB,
-                    lyrics,
-                    current_line: 0,
-                    next_fetch_line: index + NUM_LINES,
-                }
+    pub async fn fetch_lyrics(&mut self, index: usize) -> Option<Vec<String>> {
+        if index > self.loaded_lyrics.len() {
+            None
+        } else {
+            let index_end = index+NUM_LINES;
+            if index_end>self.loaded_lyrics.len(){
+              Some(self.loaded_lyrics[index..].to_vec())
+            }else{
+              Some(self.loaded_lyrics[index..index + NUM_LINES].to_vec())
             }
+            
+        }
+    }
+
+    pub async fn load_lyrics(&mut self, mode: TextType, song_name: Option<String>) -> bool {
+        match mode {
+            TextType::LRCLIB => match song_name {
+                Some(query) => match get_lrclib_lyrics(query).await {
+                    Ok(v) => {
+                        if v.is_empty() {
+                            false
+                        } else {
+                            self.loaded_lyrics = v;
+                            true
+                        }
+                    }
+                    Err(_) => false,
+                },
+                None => false,
+            },
             TextType::Github => todo!(),
             TextType::ThisProject => {
-                let lyrics = match load_new_lines(
-                    format!("{}/src/main.rs", env!("CARGO_MANIFEST_DIR")),
-                    index as usize,
-                    (index + NUM_LINES) as usize,
-                )
-                .await
-                {
-                    Ok(v) => if v.is_empty(){
-                      vec![
-                        "No more lyrics".into(),
-                        "All the lyrics are gone".into(),
-                        "No more lyrics".into(),
-                        "All the lyrics are gone".into(),
-                        "No more lyrics".into(),
-                    ]
-                    }else{v},
-                    Err(_) => vec![
-                        "Something went wrong".into(),
-                        "Fetching the lyrics from this file".into(),
-                        "Something went wrong".into(),
-                        "fetching the lyrics from this file".into(),
-                        "Something went wrong".into(),
-                    ],
-                };
-                TextControllerData {
-                    text_type: TextType::ThisProject,
-                    lyrics,
-                    current_line: 0,
-                    next_fetch_line: index + NUM_LINES,
+                match load_new_lines(format!("{}/src/main.rs", env!("CARGO_MANIFEST_DIR"))).await {
+                    Ok(v) => {
+                        if v.is_empty() {
+                            false
+                        } else {
+                            self.loaded_lyrics = v;
+                            true
+                        }
+                    }
+                    Err(_) => false,
                 }
             }
         }
     }
 }
 
-async fn load_new_lines(
-    file_name: impl Into<PathBuf>,
-    line_start: usize,
-    line_end: usize,
-) -> anyhow::Result<Vec<String>> {
+async fn load_new_lines(file_name: impl Into<PathBuf>) -> anyhow::Result<Vec<String>> {
     let file_path = file_name.into();
-    
+
     let line_handle = thread::spawn(move || -> Result<Vec<String>, io::Error> {
         let file = File::open(file_path)?;
         let reader = io::BufReader::new(file);
@@ -124,9 +87,7 @@ async fn load_new_lines(
             .lines()
             .filter_map(Result::ok)
             .filter(|v| !v.is_empty())
-            .enumerate()
-            .filter(|(i, _)| (*i >= line_start && *i < line_end))
-            .map(|(_, val)| {
+            .map(|val| {
                 let mut v = val.trim().to_string();
                 v.push(' ');
                 v
@@ -161,11 +122,7 @@ struct LrclibObj {
     synced_lyrics: Option<String>,
 }
 
-async fn get_lrclib_lyrics(
-    query: String,
-    index_start: usize,
-    index_end: usize,
-) -> anyhow::Result<Vec<String>> {
+async fn get_lrclib_lyrics(query: String) -> anyhow::Result<Vec<String>> {
     let client = reqwest::Client::new();
     let url = "https://lrclib.net/api/search?q=".to_owned() + query.as_str();
 
@@ -178,9 +135,7 @@ async fn get_lrclib_lyrics(
     Ok(plain_lyrics
         .split('\n')
         .filter(|v| !v.is_empty())
-        .enumerate()
-        .filter(|(i, _)| *i >= index_start && *i < index_end)
-        .map(|(_, v)| (v.to_owned() + " "))
+        .map(|v| (v.to_owned() + " "))
         .collect())
 }
 
