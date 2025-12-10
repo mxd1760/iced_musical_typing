@@ -2,3 +2,7 @@
 .env
 *spotify_token.json
 notes.txt
+/assets/*.png-autosave.kra
+/assets/*.png~
+
+
