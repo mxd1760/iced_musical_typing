@@ -1,7 +1,5 @@
 use iced::{
-    Element, Font, Subscription, Task, Theme, time,
-    widget::{Column, button, column, row, text, text_input},
-    window,
+    Element, Font, Length, Subscription, Task, Theme, time, widget::{Column, button, column, row, text, text_input}, window
 };
 use image::GenericImageView;
 use std::sync::Arc;
@@ -17,6 +15,7 @@ use crate::text_controller::TextController;
 
 struct TypingGame {
     input: String,
+    query: String,
     score: usize,
     spotify_controller_handle: SpotifyControllerHandle,
     spotify_data: SpotifyData,
@@ -105,9 +104,12 @@ enum Message {
     InputChanged(String),
     InputSubmitted,
     Tick(Instant),
+    QueryChanged(String),
+    QuerySubmitted,
     SpotifyPlay,
     SpotifyPause,
     SpotifyDevices,
+    HideDevices,
     SpotifySetDevice(String),
     APIResult(String, Result<(), String>),
     DevicesResult(Result<Vec<(String, String)>, String>),
@@ -119,6 +121,7 @@ enum Message {
     SkipLine,
     LoadNewText,
     UpdateText(TextControllerData),
+    UpdateSongs(Option<Vec<Song>>),
 }
 
 const COMPLETED_COLOR: iced::Color = iced::Color::from_rgb(0.0, 0.5, 0.1);
@@ -162,43 +165,43 @@ impl TypingGame {
         (
             Self {
                 input: String::new(),
+                query: String::new(),
                 score: 0,
                 spotify_controller_handle: SpotifyControllerHandle::Loading,
                 spotify_data: SpotifyData::default(),
                 text_controller_handle: TextControllerHandle::Loading,
                 text_controller_data: TextControllerData::default(),
             },
-            Task::done(Message::InitializeStart)
-            ,
+            Task::done(Message::InitializeStart),
         )
     }
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::InitializeStart=>{
+            Message::InitializeStart => {
                 return Task::perform(
-                async {
-                    let spotify_controller: SpotifyController =
-                        match SpotifyController::init_from_env(rspotify::OAuth {
-                            redirect_uri: "http://127.0.0.1:3000".to_string(),
-                            scopes: rspotify::scopes!(
-                                "user-read-playback-state",
-                                "user-modify-playback-state",
-                                "user-read-currently-playing",
-                                "streaming"
-                            ),
-                            ..Default::default()
-                        })
-                        .await
-                        {
-                            Ok(item) => item,
-                            Err(e) => return Err(e.to_string()),
-                        };
-                    Ok(InitializerObject::Spotify(Arc::new(Mutex::new(
-                        spotify_controller,
-                    ))))
-                },
-                Message::InitializeComplete,
+                    async {
+                        let spotify_controller: SpotifyController =
+                            match SpotifyController::init_from_env(rspotify::OAuth {
+                                redirect_uri: "http://127.0.0.1:3000".to_string(),
+                                scopes: rspotify::scopes!(
+                                    "user-read-playback-state",
+                                    "user-modify-playback-state",
+                                    "user-read-currently-playing",
+                                    "streaming"
+                                ),
+                                ..Default::default()
+                            })
+                            .await
+                            {
+                                Ok(item) => item,
+                                Err(e) => return Err(e.to_string()),
+                            };
+                        Ok(InitializerObject::Spotify(Arc::new(Mutex::new(
+                            spotify_controller,
+                        ))))
+                    },
+                    Message::InitializeComplete,
                 );
             }
             Message::InputChanged(value) => {
@@ -345,10 +348,6 @@ impl TypingGame {
                 self.text_controller_data.text_type = TextType::LRCLIB;
                 return Task::done(Message::LoadNewText);
             }
-            // Message::SetGithubText => {
-            //     self.text_controller_data.text_type = TextType::Github;
-            //     return Task::done(Message::LoadNewText);
-            // }
             Message::SetSourceFileText => {
                 self.text_controller_data.text_type = TextType::ThisProject;
                 return Task::done(Message::LoadNewText);
@@ -364,7 +363,20 @@ impl TypingGame {
                                 .fetch_lyrics(data.next_fetch_line as usize)
                                 .await
                             {
-                                Some(v) => v,
+                                Some(v) =>{
+                                  if v.len()>0{
+                                    v
+                                  }else{
+                                    vec![
+                                      "No more lyrics".into(),
+                                      "Please load some more".into(),
+                                      "No more lyrics".into(),
+                                      "Please load some more".into(),
+                                      "No more lyrics".into(),
+                                      "Please load some more".into(),
+                                    ]
+                                  }
+                                },
                                 None => vec![
                                     "No more lyrics".into(),
                                     "Please load some more".into(),
@@ -417,11 +429,29 @@ impl TypingGame {
                 }
             }
             Message::UpdateText(data) => self.text_controller_data = data,
+            Message::QueryChanged(query) => self.query = query,
+            Message::QuerySubmitted => {
+                if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle
+                {
+                    let controller = controller.clone();
+                    let query = self.query.clone();
+                    return Task::perform(
+                        async move { controller.lock().await.search(query).await },
+                        Message::UpdateSongs,
+                    );
+                }
+            }
+            Message::UpdateSongs(result) => match result {
+                Some(new_songs) => self.spotify_data.songs_list = new_songs,
+                None => {}
+            },
+            Message::HideDevices => self.spotify_data.devices_list = vec![],
         }
         Task::none()
     }
 
     fn view(&self) -> Element<'_, Message> {
+      if self.text_controller_data.lyrics.len()>0{
         let num_matching = self
             .input
             .chars()
@@ -447,6 +477,13 @@ impl TypingGame {
         let target = &self.text_controller_data.lyrics[self.text_controller_data.current_line];
         let matching_substr = &target[0..num_matching];
         let remaining_substr = &target[num_matching..];
+        let mut songs_ui = Column::new().padding(10).spacing(10);
+        for song in &self.spotify_data.songs_list {
+            songs_ui = songs_ui.push(
+                button(text(song.name.clone() + " by " + song.artist.as_str()))
+                    .on_press(Message::SpotifyChangeSong(song.clone())),
+            )
+        }
         if let SpotifyControllerHandle::Ready(_controller) = &self.spotify_controller_handle {
             let mut devices_ui = Column::new().padding(10).spacing(10);
             for device in &self.spotify_data.devices_list {
@@ -455,27 +492,23 @@ impl TypingGame {
                         .on_press(Message::SpotifySetDevice(device.1.clone())),
                 );
             }
-            let mut songs_ui = Column::new().padding(10).spacing(10);
-            for song in &self.spotify_data.songs_list {
-                songs_ui = songs_ui.push(
-                    button(text(song.name.clone()))
-                        .on_press(Message::SpotifyChangeSong(song.clone())),
-                )
-            }
+
             row![
                 column![
+                    text("Active Spotify Devices"),
+                    row![button("Refresh Spotify Devices").on_press(Message::SpotifyDevices),button("Hide Devices").on_press(Message::HideDevices)],
+                    devices_ui,
+                    text("Spotify Playback Controller"),
+                    row![
+                        button("Play").on_press(Message::SpotifyPlay),
+                        button("Pause").on_press(Message::SpotifyPause)
+                    ],
                     text("Text Style"),
                     row![
                         button("LRCLIB").on_press(Message::SetLRCLIBText),
                         // button("Github").on_press(Message::SetGithubText),
                         button("Source File").on_press(Message::SetSourceFileText),
                     ],
-                    text("Spotify Playback Controller"),
-                    row![
-                        button("Play").on_press(Message::SpotifyPlay),
-                        button("Pause").on_press(Message::SpotifyPause)
-                    ],
-                    text(""),
                     pre,
                     row![
                         text(matching_substr).style(|_| text::Style {
@@ -494,38 +527,60 @@ impl TypingGame {
                 ],
                 column![
                     text("Songs"),
+                    row![    
+                        text_input("Search", &self.query)
+                            .width(Length::Fixed(300.0))
+                            .on_input(Message::QueryChanged)
+                            .on_submit(Message::QuerySubmitted),
+                        button("Search").on_press(Message::QuerySubmitted)
+                    ],
                     songs_ui,
-                    text("Devices"),
-                    button("Refresh Spotify Devices").on_press(Message::SpotifyDevices),
-                    devices_ui
                 ]
             ]
             .into()
         } else {
-            column![
-                text("Text Style"),
-                row![
-                    button("LRCLIB").on_press(Message::SetLRCLIBText),
-                    // button("Github").on_press(Message::SetGithubText),
-                    button("Source File").on_press(Message::SetSourceFileText),
+            row![
+                column![
+                    text("Text Style"),
+                    row![
+                        button("LRCLIB").on_press(Message::SetLRCLIBText),
+                        // button("Github").on_press(Message::SetGithubText),
+                        button("Source File").on_press(Message::SetSourceFileText),
+                    ],
+                    row![
+                        text("Loading Spotify..."),
+                        button("Retry").on_press(Message::InitializeStart)
+                    ],
+                    text(""),
+                    pre,
+                    row![
+                        text(matching_substr).style(|_| text::Style {
+                            color: Some(MATCHING_COLOR)
+                        }),
+                        text(remaining_substr).style(|_| text::Style {
+                            color: Some(PREPARE_COLOR)
+                        }),
+                    ],
+                    post,
+                    text_input("Start typing...", &self.input).on_input(Message::InputChanged),
+                    text(format!("Score: {}", self.score)),
                 ],
-                row![text("Loading Spotify..."),button("Retry").on_press(Message::InitializeStart)],
-                text(""),
-                pre,
-                row![
-                    text(matching_substr).style(|_| text::Style {
-                        color: Some(MATCHING_COLOR)
-                    }),
-                    text(remaining_substr).style(|_| text::Style {
-                        color: Some(PREPARE_COLOR)
-                    }),
-                ],
-                post,
-                text_input("Start typing...", &self.input).on_input(Message::InputChanged),
-                text(format!("Score: {}", self.score)),
+                column![
+                    // row![
+                        text("Songs"),
+                    //     text_input("Search", &self.query)
+                    //         .on_input(Message::QueryChanged)
+                    //         .on_submit(Message::QuerySubmitted),
+                    //     button("Search").on_press(Message::QuerySubmitted)
+                    // ],
+                    songs_ui,
+                ]
             ]
             .into()
         }
+      } else {
+        column![text("Loading")].into()
+      }
     }
 
     fn subscription(&self) -> Subscription<Message> {

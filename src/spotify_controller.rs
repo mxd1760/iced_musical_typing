@@ -46,6 +46,11 @@ impl Song {
                 artist: "25時".into(),
             },
             Song {
+              name: "Hai Yorikonde".into(),
+              id: "6woV8uWxn7rcLZxJKYruS1".into(),
+              artist: "Kocchi no Kento".into()
+            },
+            Song {
                 name: "Golden".into(),
                 id: "1CPZ5BxNNd0n0nF4Orb9JS".into(),
                 artist: "HUNTR/X".into(),
@@ -162,9 +167,33 @@ impl SpotifyController {
         Ok(parse_devices_response(res).await)
     }
 
-    // pub fn search_by_title() {
-    //     todo!();
-    // }
+    pub async fn search(&self, query: String) -> Option<Vec<Song>> {
+        let access_token = match self.get_access_token().await {
+            Ok(t) => t,
+            Err(_) => {
+                return None;
+            }
+        };
+        let client = reqwest::Client::new();
+        let url = format!("https://api.spotify.com/v1/search?type=track&q={}", query);
+
+        let res = match client
+            .get(url)
+            .bearer_auth(access_token)
+            .header("Content-Length", 0)
+            .send()
+            .await
+        {
+            Ok(v) => v,
+            Err(_) => {
+                return None;
+            }
+        };
+
+        println!("Spotify Search Response {:#?}", res.status());
+        println!("{:#?}", res);
+        parse_search_response(res).await
+    }
 
     pub async fn play(&mut self) -> anyhow::Result<()> {
         let access_token = self.get_access_token().await?;
@@ -279,4 +308,158 @@ async fn parse_devices_response(res: reqwest::Response) -> Vec<(String, String)>
         .iter()
         .map(|v| (v.name.clone(), v.id.clone()))
         .collect()
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SearchResults {
+    #[serde(rename = "href")]
+    _href: String,
+    #[serde(rename = "limit")]
+    _limit: i32,
+    #[serde(rename = "next")]
+    _next: Option<String>,
+    #[serde(rename = "offset")]
+    _offset: i32,
+    #[serde(rename = "previous")]
+    _previous: Option<String>,
+    #[serde(rename = "total")]
+    _total: i32,
+    #[serde(rename = "items")]
+    items: Vec<SearchResultItem>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SearchResultItem {
+    #[serde(rename = "album")]
+    _album: Album,
+    #[serde(rename = "artists")]
+    _artists: Vec<Artist>,
+    #[serde(rename = "available_markets")]
+    _markets: Vec<String>,
+    #[serde(rename = "disc_number")]
+    _disc_number: i32,
+    #[serde(rename = "duration_ms")]
+    _duration: i64,
+    #[serde(rename = "explicit")]
+    _explicit: bool,
+    #[serde(rename = "external_ids")]
+    _external_ids: HashMap<String, String>,
+    #[serde(rename = "external_urls")]
+    _external_urls: HashMap<String, String>,
+    #[serde(rename = "href")]
+    _href: String,
+    #[serde(rename = "id")]
+    id: String,
+    #[serde(rename = "is_local")]
+    _is_local: bool,
+    #[serde(rename = "is_playable")]
+    _is_playable: bool,
+    #[serde(rename = "name")]
+    name: String,
+    #[serde(rename = "popularity")]
+    _popularity: i32,
+    #[serde(rename = "preview_url")]
+    _preview_url: Option<String>,
+    #[serde(rename = "track_number")]
+    _track_number: i32,
+    #[serde(rename = "type")]
+    _type: String,
+    #[serde(rename = "uri")]
+    _uri: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct Album {
+    #[serde(rename = "album_type")]
+    _album_type: String,
+    #[serde(rename = "artists")]
+    _artists: Vec<Artist>,
+    #[serde(rename = "available_markets")]
+    _markets: Vec<String>,
+    #[serde(rename = "external_urls")]
+    _external_urls: HashMap<String, String>,
+    #[serde(rename = "href")]
+    _href: String,
+    #[serde(rename = "id")]
+    _id: String,
+    #[serde(rename = "images")]
+    _images: Vec<AlbumImage>,
+    #[serde(rename = "is_playable")]
+    _is_playable: bool,
+    #[serde(rename = "name")]
+    _name: String,
+    #[serde(rename = "release_date")]
+    _release_date: String,
+    #[serde(rename = "release_date_precision")]
+    _rdb: String,
+    #[serde(rename = "total_tracks")]
+    _total_tracks: i32,
+    #[serde(rename = "type")]
+    _type: String,
+    #[serde(rename = "uri")]
+    _uri: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct Artist {
+    #[serde(rename = "external_urls")]
+    _external_urls: HashMap<String, String>,
+    #[serde(rename = "href")]
+    _href: String,
+    #[serde(rename = "id")]
+    _id: String,
+    #[serde(rename = "name")]
+    name: String,
+    #[serde(rename = "type")]
+    _type: String,
+    #[serde(rename = "uri")]
+    _uri: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct AlbumImage {
+    #[serde(rename = "height")]
+    _height: i32,
+    #[serde(rename = "width")]
+    _width: i32,
+    #[serde(rename = "url")]
+    _url: String,
+}
+
+async fn parse_search_response(res: reqwest::Response) -> Option<Vec<Song>> {
+    let body = match res.text().await{
+      Ok(text)=>text,
+      Err(s)=>{
+        log::error!("Error reading text: {}",s);
+        return None;
+      }
+    };
+    let map: HashMap<String,SearchResults> = match serde_json::from_str(&body){
+      Ok(map)=>map,
+      Err(s)=>{
+        log::error!("Error parsing response: {}",s);
+        return None;
+      }
+    };
+    let tracks = match map.get("tracks") {
+        Some(tracks) => tracks,
+        None => {
+            log::warn!("could not fetch tracks");
+            return None;
+        }
+    };
+    Some(
+        tracks
+            .items
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| *i <= 10 as usize)
+            .map(|(_, v)| Song {
+                name: v.name.clone(),
+                id: v.id.clone(),
+                artist: v._artists[0].name.clone(),
+            })
+            .collect(),
+    )
+    
 }

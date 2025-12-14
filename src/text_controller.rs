@@ -133,13 +133,11 @@ async fn get_lrclib_lyrics(query: String) -> anyhow::Result<Vec<String>> {
     // get plainLyrics
     let plain_lyrics = parse_lrclib_response(res).await.unwrap(); //?;//TODO
 
-    Ok(
-        plain_lyrics
+    Ok(plain_lyrics
         .split('\n')
         .filter(|v| !v.is_empty())
         .map(|v| v.to_owned() + " ")
-        .collect()
-    )
+        .collect())
 }
 
 async fn parse_lrclib_response(res: reqwest::Response) -> anyhow::Result<String> {
