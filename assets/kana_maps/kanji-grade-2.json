@@ -1,0 +1,689 @@
+{
+  "万": [
+    "yorozu",
+    "ban",
+    "man"
+  ],
+  "丸": [
+    "maru",
+    "gan"
+  ],
+  "交": [
+    "ka",
+    "kou"
+  ],
+  "京": [
+    "miyako",
+    "kyou",
+    "kin"
+  ],
+  "今": [
+    "ima",
+    "kin",
+    "kon"
+  ],
+  "会": [
+    "a",
+    "e",
+    "kai"
+  ],
+  "体": [
+    "katachi",
+    "tai",
+    "tei"
+  ],
+  "何": [
+    "nani",
+    "ka"
+  ],
+  "作": [
+    "zuku",
+    "sa",
+    "saku"
+  ],
+  "元": [
+    "moto",
+    "gan",
+    "gen"
+  ],
+  "兄": [
+    "ani",
+    "kyou",
+    "kei"
+  ],
+  "光": [
+    "hika",
+    "kou"
+  ],
+  "公": [
+    "ooyake",
+    "ku",
+    "kou"
+  ],
+  "内": [
+    "uchi",
+    "dai",
+    "nai"
+  ],
+  "冬": [
+    "fuyu",
+    "tou"
+  ],
+  "刀": [
+    "katana",
+    "tou"
+  ],
+  "分": [
+    "wa",
+    "fun",
+    "bu"
+  ],
+  "切": [
+    "ki",
+    "sai",
+    "setsu"
+  ],
+  "前": [
+    "mae",
+    "zen"
+  ],
+  "北": [
+    "kita",
+    "hoku"
+  ],
+  "午": [
+    "uma",
+    "go"
+  ],
+  "半": [
+    "naka",
+    "han"
+  ],
+  "南": [
+    "minami",
+    "na",
+    "nan"
+  ],
+  "原": [
+    "hara",
+    "gen"
+  ],
+  "友": [
+    "tomo",
+    "yuu"
+  ],
+  "古": [
+    "furu",
+    "ko"
+  ],
+  "台": [
+    "utena",
+    "tai",
+    "dai"
+  ],
+  "合": [
+    "a",
+    "katsu",
+    "gatsu"
+  ],
+  "同": [
+    "ona",
+    "dou"
+  ],
+  "回": [
+    "mawa",
+    "e",
+    "kai"
+  ],
+  "図": [
+    "e",
+    "zu",
+    "to"
+  ],
+  "国": [
+    "kuni",
+    "koku"
+  ],
+  "園": [
+    "sono",
+    "en"
+  ],
+  "地": [
+    "ji",
+    "chi"
+  ],
+  "場": [
+    "ba",
+    "jou",
+    "chou"
+  ],
+  "声": [
+    "koe",
+    "shou",
+    "sei"
+  ],
+  "売": [
+    "u",
+    "bai"
+  ],
+  "夏": [
+    "natsu",
+    "ka",
+    "ga"
+  ],
+  "外": [
+    "soto",
+    "gai",
+    "ge"
+  ],
+  "多": [
+    "oo",
+    "ta"
+  ],
+  "夜": [
+    "yo",
+    "ya"
+  ],
+  "太": [
+    "futo",
+    "ta",
+    "tai"
+  ],
+  "妹": [
+    "imouto",
+    "mai"
+  ],
+  "姉": [
+    "ane",
+    "shi"
+  ],
+  "室": [
+    "muro",
+    "shitsu"
+  ],
+  "家": [
+    "ie",
+    "ka",
+    "ke"
+  ],
+  "寺": [
+    "tera",
+    "ji"
+  ],
+  "少": [
+    "suku",
+    "shou"
+  ],
+  "岩": [
+    "iwa",
+    "gan"
+  ],
+  "工": [
+    "ku",
+    "gu"
+  ],
+  "市": [
+    "ichi",
+    "shi"
+  ],
+  "帰": [
+    "oku",
+    "ki"
+  ],
+  "広": [
+    "hiro",
+    "kou"
+  ],
+  "店": [
+    "tana",
+    "ten"
+  ],
+  "弓": [
+    "yumi",
+    "kyuu"
+  ],
+  "引": [
+    "hi",
+    "in"
+  ],
+  "弟": [
+    "otouto",
+    "dai",
+    "tei"
+  ],
+  "弱": [
+    "yowa",
+    "jaku"
+  ],
+  "強": [
+    "kowa",
+    "kyou",
+    "gou"
+  ],
+  "当": [
+    "a",
+    "tou"
+  ],
+  "形": [
+    "gata",
+    "gyou",
+    "kei"
+  ],
+  "後": [
+    "ato",
+    "kou",
+    "go"
+  ],
+  "心": [
+    "gokoro",
+    "shin"
+  ],
+  "思": [
+    "obo",
+    "shi"
+  ],
+  "戸": [
+    "to",
+    "ko"
+  ],
+  "才": [
+    "sai"
+  ],
+  "教": [
+    "oshi",
+    "kyou"
+  ],
+  "数": [
+    "kazu",
+    "saku",
+    "shu"
+  ],
+  "新": [
+    "atara",
+    "shin"
+  ],
+  "方": [
+    "kata",
+    "hou"
+  ],
+  "明": [
+    "a",
+    "myou",
+    "min"
+  ],
+  "星": [
+    "boshi",
+    "shou",
+    "sei"
+  ],
+  "春": [
+    "haru",
+    "shun"
+  ],
+  "昼": [
+    "hiru",
+    "chuu"
+  ],
+  "時": [
+    "doki",
+    "ji"
+  ],
+  "晴": [
+    "ba",
+    "sei"
+  ],
+  "曜": [
+    "you"
+  ],
+  "書": [
+    "ga",
+    "sho"
+  ],
+  "朝": [
+    "asa",
+    "chou"
+  ],
+  "来": [
+    "ki",
+    "tai",
+    "rai"
+  ],
+  "東": [
+    "higashi",
+    "tou"
+  ],
+  "楽": [
+    "kono",
+    "gaku",
+    "gou"
+  ],
+  "歌": [
+    "uta",
+    "ka"
+  ],
+  "止": [
+    "sa",
+    "shi"
+  ],
+  "歩": [
+    "ayu",
+    "fu",
+    "bu"
+  ],
+  "母": [
+    "haha",
+    "bo"
+  ],
+  "毎": [
+    "goto",
+    "mai"
+  ],
+  "毛": [
+    "ke",
+    "mou"
+  ],
+  "池": [
+    "ike",
+    "chi"
+  ],
+  "汽": [
+    "ki"
+  ],
+  "活": [
+    "i",
+    "katsu"
+  ],
+  "海": [
+    "umi",
+    "kai"
+  ],
+  "点": [
+    "sa",
+    "ten"
+  ],
+  "父": [
+    "chichi",
+    "fu"
+  ],
+  "牛": [
+    "ushi",
+    "giyuu"
+  ],
+  "理": [
+    "kotowari",
+    "ri"
+  ],
+  "用": [
+    "mochi",
+    "you"
+  ],
+  "画": [
+    "ega",
+    "e",
+    "kai"
+  ],
+  "番": [
+    "tsuga",
+    "ban"
+  ],
+  "直": [
+    "nao",
+    "jika",
+    "jiki"
+  ],
+  "矢": [
+    "ya",
+    "shi"
+  ],
+  "知": [
+    "shi",
+    "chi"
+  ],
+  "社": [
+    "yashiro",
+    "sha"
+  ],
+  "秋": [
+    "aki",
+    "shuu"
+  ],
+  "科": [
+    "ka"
+  ],
+  "答": [
+    "kota",
+    "tou"
+  ],
+  "算": [
+    "soro",
+    "san"
+  ],
+  "米": [
+    "kome",
+    "bei",
+    "mai"
+  ],
+  "紙": [
+    "kami",
+    "shi"
+  ],
+  "細": [
+    "koma",
+    "sai"
+  ],
+  "組": [
+    "gumi",
+    "so"
+  ],
+  "絵": [
+    "e",
+    "kai"
+  ],
+  "線": [
+    "suji",
+    "sen"
+  ],
+  "羽": [
+    "ha",
+    "u"
+  ],
+  "考": [
+    "kanga",
+    "kou"
+  ],
+  "聞": [
+    "ki",
+    "bun",
+    "mon"
+  ],
+  "肉": [
+    "shishi",
+    "niku"
+  ],
+  "自": [
+    "ono",
+    "shi",
+    "ji"
+  ],
+  "船": [
+    "funa",
+    "sen"
+  ],
+  "色": [
+    "iro",
+    "shiki",
+    "shoku"
+  ],
+  "茶": [
+    "sa",
+    "cha"
+  ],
+  "行": [
+    "i",
+    "an",
+    "gyou"
+  ],
+  "西": [
+    "nishi",
+    "sai",
+    "su"
+  ],
+  "親": [
+    "oya",
+    "shin"
+  ],
+  "角": [
+    "kado",
+    "kaku"
+  ],
+  "言": [
+    "i",
+    "gen",
+    "gon"
+  ],
+  "計": [
+    "haka",
+    "kei"
+  ],
+  "記": [
+    "shiru",
+    "ki"
+  ],
+  "話": [
+    "hana",
+    "wa"
+  ],
+  "語": [
+    "kata",
+    "go"
+  ],
+  "読": [
+    "yo",
+    "tou",
+    "toku"
+  ],
+  "谷": [
+    "kiwa",
+    "koku"
+  ],
+  "買": [
+    "ka",
+    "bai"
+  ],
+  "走": [
+    "hashi",
+    "sou"
+  ],
+  "近": [
+    "chika",
+    "kin",
+    "kon"
+  ],
+  "通": [
+    "too",
+    "tsu",
+    "tsuu"
+  ],
+  "週": [
+    "shuu"
+  ],
+  "道": [
+    "iu",
+    "tou",
+    "dou"
+  ],
+  "遠": [
+    "too",
+    "en",
+    "on"
+  ],
+  "里": [
+    "sato",
+    "ri"
+  ],
+  "野": [
+    "no",
+    "sho",
+    "ya"
+  ],
+  "長": [
+    "osa",
+    "chou"
+  ],
+  "門": [
+    "kado",
+    "mon"
+  ],
+  "間": [
+    "ai",
+    "kan",
+    "ken"
+  ],
+  "雪": [
+    "yuki",
+    "setsu"
+  ],
+  "雲": [
+    "gumo",
+    "un"
+  ],
+  "電": [
+    "den"
+  ],
+  "頭": [
+    "gashira",
+    "zu",
+    "to"
+  ],
+  "顔": [
+    "kao",
+    "gan"
+  ],
+  "風": [
+    "kaza",
+    "fu",
+    "fuu"
+  ],
+  "食": [
+    "ku",
+    "shoku",
+    "jiki"
+  ],
+  "首": [
+    "kubi",
+    "shu"
+  ],
+  "馬": [
+    "uma",
+    "ba"
+  ],
+  "高": [
+    "daka",
+    "kou"
+  ],
+  "魚": [
+    "zakana",
+    "gyo"
+  ],
+  "鳥": [
+    "tori",
+    "chou"
+  ],
+  "鳴": [
+    "na",
+    "mei"
+  ],
+  "麦": [
+    "mugi",
+    "baku"
+  ],
+  "黄": [
+    "ki",
+    "ou",
+    "kou"
+  ],
+  "黒": [
+    "kuro",
+    "koku"
+  ]
+}

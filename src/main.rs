@@ -1,5 +1,5 @@
 use iced::{
-    Element, Font, Length, Subscription, Task, Theme, time, widget::{Column, button, column, row, text, text_input}, window
+    Element, Font, Length, Subscription, Task, Theme, time, widget::{Column, Row, Space, button, column, row, text, text_input}, window
 };
 use image::GenericImageView;
 use std::sync::Arc;
@@ -8,8 +8,10 @@ use tokio::sync::Mutex;
 
 mod spotify_controller;
 mod text_controller;
+mod char_controller;
 use spotify_controller::Song;
 use spotify_controller::SpotifyController;
+use char_controller::CharController;
 
 use crate::text_controller::TextController;
 
@@ -21,6 +23,13 @@ struct TypingGame {
     spotify_data: SpotifyData,
     text_controller_handle: TextControllerHandle,
     text_controller_data: TextControllerData,
+    char_controller_handle:CharControllerHandle,
+    char_bonus:Option<(String,Vec<String>)>,
+}
+
+enum CharControllerHandle{
+  Loading,
+  Ready(CharController)
 }
 
 enum SpotifyControllerHandle {
@@ -95,6 +104,7 @@ impl Default for TextControllerData {
 enum InitializerObject {
     Spotify(Arc<Mutex<SpotifyController>>),
     Text(Arc<Mutex<TextController>>),
+    Char(CharController),
 }
 
 #[derive(Debug, Clone)]
@@ -122,6 +132,7 @@ enum Message {
     LoadNewText,
     UpdateText(TextControllerData),
     UpdateSongs(Option<Vec<Song>>),
+    CheckForeignChars,
 }
 
 const COMPLETED_COLOR: iced::Color = iced::Color::from_rgb(0.0, 0.5, 0.1);
@@ -171,6 +182,8 @@ impl TypingGame {
                 spotify_data: SpotifyData::default(),
                 text_controller_handle: TextControllerHandle::Loading,
                 text_controller_data: TextControllerData::default(),
+                char_controller_handle:CharControllerHandle::Loading,
+                char_bonus:None
             },
             Task::done(Message::InitializeStart),
         )
@@ -220,7 +233,7 @@ impl TypingGame {
                     .count();
                 if num_matching
                     >= self.text_controller_data.lyrics[self.text_controller_data.current_line]
-                        .len()
+                    .chars().count()
                 {
                     self.score += 1;
                     self.input = "".into();
@@ -228,6 +241,7 @@ impl TypingGame {
                         return Task::done(Message::NextLyricBatch);
                     }
                 }
+                return Task::done(Message::CheckForeignChars);
             }
             Message::InputSubmitted => {
                 let mut v = self.input.clone();
@@ -309,6 +323,27 @@ impl TypingGame {
                     }
                     InitializerObject::Text(tx) => {
                         self.text_controller_handle = TextControllerHandle::Ready(tx);
+                        return Task::perform(
+                            async {
+                                let char_controller = CharController::init(
+                                  vec![
+                                    include_str!("../assets/kana_maps/hiragana.json"),
+                                    include_str!("../assets/kana_maps/katakana.json"),
+                                    include_str!("../assets/kana_maps/kanji-grade-1.json"),
+                                    include_str!("../assets/kana_maps/kanji-grade-2.json"),
+                                    include_str!("../assets/kana_maps/kanji-grade-3.json"),
+                                    include_str!("../assets/kana_maps/kanji-grade-4.json"),
+                                    include_str!("../assets/kana_maps/kanji-grade-5.json"),
+                                    include_str!("../assets/kana_maps/kanji-grade-6.json"),
+                                  ]
+                                ).await;
+                                Ok(InitializerObject::Char(char_controller))
+                            },
+                            Message::InitializeComplete,
+                        );
+                    }
+                    InitializerObject::Char(cx)=>{
+                      self.char_controller_handle = CharControllerHandle::Ready(cx);
                     }
                 },
                 Err(_) => todo!(),
@@ -403,6 +438,7 @@ impl TypingGame {
                 if !self.text_controller_data.count_up() {
                     return Task::done(Message::NextLyricBatch);
                 }
+                return Task::done(Message::CheckForeignChars)
             }
             Message::LoadNewText => {
                 self.text_controller_data.current_line = 0;
@@ -428,7 +464,10 @@ impl TypingGame {
                     );
                 }
             }
-            Message::UpdateText(data) => self.text_controller_data = data,
+            Message::UpdateText(data) =>{
+              self.text_controller_data = data;
+              return Task::done(Message::CheckForeignChars);
+            },
             Message::QueryChanged(query) => self.query = query,
             Message::QuerySubmitted => {
                 if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle
@@ -446,6 +485,28 @@ impl TypingGame {
                 None => {}
             },
             Message::HideDevices => self.spotify_data.devices_list = vec![],
+            Message::CheckForeignChars => {
+              if let CharControllerHandle::Ready(cc) = &self.char_controller_handle{
+                let line = self.text_controller_data.lyrics[self.text_controller_data.current_line]
+                            .chars();
+                let num_matching = self
+                    .input
+                    .chars()
+                    .zip(line.clone())
+                    .take_while(|(a, b)| a == b)
+                    .count();
+                let symbol:String = line.clone().nth(num_matching).unwrap_or(' ').into();
+                self.char_bonus = match cc.get_play_char(symbol.as_str()){
+                    Some(v) => {
+                      if v.contains(&self.input.chars().skip(num_matching).collect()){
+                        return Task::done(Message::InputChanged(self.input.chars().take(num_matching).collect::<String>() + symbol.as_str()))
+                      }
+                      Some((symbol,v.clone()))
+                    },
+                    None => None,
+                }
+              }
+            },
         }
         Task::none()
     }
@@ -475,8 +536,15 @@ impl TypingGame {
                 }))
             });
         let target = &self.text_controller_data.lyrics[self.text_controller_data.current_line];
-        let matching_substr = &target[0..num_matching];
-        let remaining_substr = &target[num_matching..];
+        let matching_substr:String= target.chars().take(num_matching).collect();
+        let remaining_substr:String = target.chars().skip(num_matching).collect();
+        let mut info_row:Row<_> = row![text(format!("Score: {}", self.score)),Space::with_width(40)];
+        match &self.char_bonus{
+            Some((symbol,v)) => {
+              info_row = info_row.push(text(format!("{} -> {:?}",symbol,v)));
+            },
+            None => (),
+        }
         let mut songs_ui = Column::new().padding(10).spacing(10);
         for song in &self.spotify_data.songs_list {
             songs_ui = songs_ui.push(
@@ -522,7 +590,7 @@ impl TypingGame {
                     text_input("Start typing...", &self.input)
                         .on_input(Message::InputChanged)
                         .on_submit(Message::InputSubmitted),
-                    text(format!("Score: {}", self.score)),
+                    info_row,
                     row![button("Skip Line").on_press(Message::SkipLine)]
                 ],
                 column![
