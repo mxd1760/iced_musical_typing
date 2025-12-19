@@ -1,4 +1,4 @@
-# Song Typing
+# Musical Typing
 
 This is a neat little project that aims to let users practice typing while listening to music. Currently there are only 2 main typing modes:
 - type along to songs
