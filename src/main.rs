@@ -338,6 +338,7 @@ impl TypingGame {
                         return Task::perform(
                             async {
                                 let char_controller = CharController::init(vec![
+                                    include_str!("../assets/kana_maps/special.json"),
                                     include_str!("../assets/kana_maps/hiragana.json"),
                                     include_str!("../assets/kana_maps/katakana.json"),
                                     include_str!("../assets/kana_maps/kanji-joyo.json"),

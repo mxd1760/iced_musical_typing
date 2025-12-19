@@ -46,7 +46,7 @@ impl Song {
                 artist: "25時".into(),
             },
             Song {
-                name: "Hai Yorikonde".into(),
+                name: "Hai Yorokonde".into(),
                 id: "6woV8uWxn7rcLZxJKYruS1".into(),
                 artist: "Kocchi no Kento".into(),
             },
