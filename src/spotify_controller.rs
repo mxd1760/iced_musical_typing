@@ -46,9 +46,9 @@ impl Song {
                 artist: "25時".into(),
             },
             Song {
-              name: "Hai Yorikonde".into(),
-              id: "6woV8uWxn7rcLZxJKYruS1".into(),
-              artist: "Kocchi no Kento".into()
+                name: "Hai Yorikonde".into(),
+                id: "6woV8uWxn7rcLZxJKYruS1".into(),
+                artist: "Kocchi no Kento".into(),
             },
             Song {
                 name: "Golden".into(),
@@ -427,19 +427,19 @@ struct AlbumImage {
 }
 
 async fn parse_search_response(res: reqwest::Response) -> Option<Vec<Song>> {
-    let body = match res.text().await{
-      Ok(text)=>text,
-      Err(s)=>{
-        log::error!("Error reading text: {}",s);
-        return None;
-      }
+    let body = match res.text().await {
+        Ok(text) => text,
+        Err(s) => {
+            log::error!("Error reading text: {}", s);
+            return None;
+        }
     };
-    let map: HashMap<String,SearchResults> = match serde_json::from_str(&body){
-      Ok(map)=>map,
-      Err(s)=>{
-        log::error!("Error parsing response: {}",s);
-        return None;
-      }
+    let map: HashMap<String, SearchResults> = match serde_json::from_str(&body) {
+        Ok(map) => map,
+        Err(s) => {
+            log::error!("Error parsing response: {}", s);
+            return None;
+        }
     };
     let tracks = match map.get("tracks") {
         Some(tracks) => tracks,
@@ -461,5 +461,4 @@ async fn parse_search_response(res: reqwest::Response) -> Option<Vec<Song>> {
             })
             .collect(),
     )
-    
 }

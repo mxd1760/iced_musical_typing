@@ -20,8 +20,8 @@ def kana_to_romaji(kana: str) -> str:
     return conv.do(kana).lower()
 
 
-def get_grade_kanji(grade: int):
-    url = f"{BASE_URL}/grade-{grade}"
+def get_base_kanji(ext: str):
+    url = f"{BASE_URL}/{ext}"
     return requests.get(url).json()
 
 
@@ -66,33 +66,34 @@ def pick_readings(data, max_readings=3):
     return result[:max_readings]
 
 
-def build_grade(grade: int):
-    print(f"Building Grade {grade}...")
-    kanji_list = get_grade_kanji(grade)
+def get_kanji(level):
+    print(f"Building Level {level}...")
+    kanji_list = get_base_kanji(level)
     result = {}
 
     for i, kanji in enumerate(kanji_list):
         data = get_kanji_data(kanji)
         readings = pick_readings(data)
         result[kanji] = readings
-
+        
         # polite rate limit
         time.sleep(0.12)
-
-        if i % 25 == 0:
+        if i%25==0:
             print(f"  {i}/{len(kanji_list)}")
-
     return result
 
 
-def main():
-    for grade in GRADES:
-        grade_map = build_grade(grade)
-        filename = f"kanji-grade-{grade}.json"
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(grade_map, f, ensure_ascii=False, indent=2)
-        print(f"Wrote {filename}\n")
+def build_ext(level):
+    map = get_kanji(level)
+    filename=f"kanji-{level}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(map,f,ensure_ascii=False,indent=2)
+    print(f"Wrote {filename}\n")
 
+def main():
+    build_ext("joyo")
+    build_ext("jinmeiyo")
+    # build_ext("heisig")
 
 if __name__ == "__main__":
     main()

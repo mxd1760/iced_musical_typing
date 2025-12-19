@@ -1,17 +1,19 @@
 use iced::{
-    Element, Font, Length, Subscription, Task, Theme, time, widget::{Column, Row, Space, button, column, row, text, text_input}, window
+    Element, Font, Length, Subscription, Task, Theme, time,
+    widget::{Column, Row, Space, button, column, row, text, text_input},
+    window,
 };
 use image::GenericImageView;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
+mod char_controller;
 mod spotify_controller;
 mod text_controller;
-mod char_controller;
+use char_controller::CharController;
 use spotify_controller::Song;
 use spotify_controller::SpotifyController;
-use char_controller::CharController;
 
 use crate::text_controller::TextController;
 
@@ -23,13 +25,13 @@ struct TypingGame {
     spotify_data: SpotifyData,
     text_controller_handle: TextControllerHandle,
     text_controller_data: TextControllerData,
-    char_controller_handle:CharControllerHandle,
-    char_bonus:Option<(String,Vec<String>)>,
+    char_controller_handle: CharControllerHandle,
+    char_bonus: Option<(String, Vec<String>)>,
 }
 
-enum CharControllerHandle{
-  Loading,
-  Ready(CharController)
+enum CharControllerHandle {
+    Loading,
+    Ready(CharController),
 }
 
 enum SpotifyControllerHandle {
@@ -182,8 +184,8 @@ impl TypingGame {
                 spotify_data: SpotifyData::default(),
                 text_controller_handle: TextControllerHandle::Loading,
                 text_controller_data: TextControllerData::default(),
-                char_controller_handle:CharControllerHandle::Loading,
-                char_bonus:None
+                char_controller_handle: CharControllerHandle::Loading,
+                char_bonus: None,
             },
             Task::done(Message::InitializeStart),
         )
@@ -233,7 +235,8 @@ impl TypingGame {
                     .count();
                 if num_matching
                     >= self.text_controller_data.lyrics[self.text_controller_data.current_line]
-                    .chars().count()
+                        .chars()
+                        .count()
                 {
                     self.score += 1;
                     self.input = "".into();
@@ -241,6 +244,15 @@ impl TypingGame {
                         return Task::done(Message::NextLyricBatch);
                     }
                 }
+                if let Some((symbol, v)) = self.char_bonus.clone() {
+                    if v.contains(&self.input.chars().skip(num_matching).collect()) {
+                        return Task::done(Message::InputChanged(
+                            self.input.chars().take(num_matching).collect::<String>()
+                                + symbol.as_str(),
+                        ));
+                    }
+                }
+
                 return Task::done(Message::CheckForeignChars);
             }
             Message::InputSubmitted => {
@@ -325,25 +337,20 @@ impl TypingGame {
                         self.text_controller_handle = TextControllerHandle::Ready(tx);
                         return Task::perform(
                             async {
-                                let char_controller = CharController::init(
-                                  vec![
+                                let char_controller = CharController::init(vec![
                                     include_str!("../assets/kana_maps/hiragana.json"),
                                     include_str!("../assets/kana_maps/katakana.json"),
-                                    include_str!("../assets/kana_maps/kanji-grade-1.json"),
-                                    include_str!("../assets/kana_maps/kanji-grade-2.json"),
-                                    include_str!("../assets/kana_maps/kanji-grade-3.json"),
-                                    include_str!("../assets/kana_maps/kanji-grade-4.json"),
-                                    include_str!("../assets/kana_maps/kanji-grade-5.json"),
-                                    include_str!("../assets/kana_maps/kanji-grade-6.json"),
-                                  ]
-                                ).await;
+                                    include_str!("../assets/kana_maps/kanji-joyo.json"),
+                                    include_str!("../assets/kana_maps/kanji-jinmeiyo.json"),
+                                ])
+                                .await;
                                 Ok(InitializerObject::Char(char_controller))
                             },
                             Message::InitializeComplete,
                         );
                     }
-                    InitializerObject::Char(cx)=>{
-                      self.char_controller_handle = CharControllerHandle::Ready(cx);
+                    InitializerObject::Char(cx) => {
+                        self.char_controller_handle = CharControllerHandle::Ready(cx);
                     }
                 },
                 Err(_) => todo!(),
@@ -398,20 +405,20 @@ impl TypingGame {
                                 .fetch_lyrics(data.next_fetch_line as usize)
                                 .await
                             {
-                                Some(v) =>{
-                                  if v.len()>0{
-                                    v
-                                  }else{
-                                    vec![
-                                      "No more lyrics".into(),
-                                      "Please load some more".into(),
-                                      "No more lyrics".into(),
-                                      "Please load some more".into(),
-                                      "No more lyrics".into(),
-                                      "Please load some more".into(),
-                                    ]
-                                  }
-                                },
+                                Some(v) => {
+                                    if v.len() > 0 {
+                                        v
+                                    } else {
+                                        vec![
+                                            "No more lyrics".into(),
+                                            "Please load some more".into(),
+                                            "No more lyrics".into(),
+                                            "Please load some more".into(),
+                                            "No more lyrics".into(),
+                                            "Please load some more".into(),
+                                        ]
+                                    }
+                                }
                                 None => vec![
                                     "No more lyrics".into(),
                                     "Please load some more".into(),
@@ -438,7 +445,7 @@ impl TypingGame {
                 if !self.text_controller_data.count_up() {
                     return Task::done(Message::NextLyricBatch);
                 }
-                return Task::done(Message::CheckForeignChars)
+                return Task::done(Message::CheckForeignChars);
             }
             Message::LoadNewText => {
                 self.text_controller_data.current_line = 0;
@@ -464,10 +471,10 @@ impl TypingGame {
                     );
                 }
             }
-            Message::UpdateText(data) =>{
-              self.text_controller_data = data;
-              return Task::done(Message::CheckForeignChars);
-            },
+            Message::UpdateText(data) => {
+                self.text_controller_data = data;
+                return Task::done(Message::CheckForeignChars);
+            }
             Message::QueryChanged(query) => self.query = query,
             Message::QuerySubmitted => {
                 if let SpotifyControllerHandle::Ready(controller) = &self.spotify_controller_handle
@@ -486,169 +493,188 @@ impl TypingGame {
             },
             Message::HideDevices => self.spotify_data.devices_list = vec![],
             Message::CheckForeignChars => {
-              if let CharControllerHandle::Ready(cc) = &self.char_controller_handle{
-                let line = self.text_controller_data.lyrics[self.text_controller_data.current_line]
-                            .chars();
-                let num_matching = self
-                    .input
-                    .chars()
-                    .zip(line.clone())
-                    .take_while(|(a, b)| a == b)
-                    .count();
-                let symbol:String = line.clone().nth(num_matching).unwrap_or(' ').into();
-                self.char_bonus = match cc.get_play_char(symbol.as_str()){
-                    Some(v) => {
-                      if v.contains(&self.input.chars().skip(num_matching).collect()){
-                        return Task::done(Message::InputChanged(self.input.chars().take(num_matching).collect::<String>() + symbol.as_str()))
-                      }
-                      Some((symbol,v.clone()))
-                    },
-                    None => None,
+                if let CharControllerHandle::Ready(cc) = &self.char_controller_handle {
+                    let line = self.text_controller_data.lyrics
+                        [self.text_controller_data.current_line]
+                        .clone();
+                    let num_matching = self
+                        .input
+                        .chars()
+                        .zip(line.chars())
+                        .take_while(|(a, b)| a == b)
+                        .count();
+                    let out = if num_matching < line.chars().count() - 1 {
+                        let special_char: String =
+                            line.chars().skip(num_matching).take(2).collect();
+                        match cc.check_special_char(&special_char) {
+                            Some(v) => Some((special_char, v.clone())),
+                            None => None,
+                        }
+                    } else {
+                        None
+                    };
+                    self.char_bonus = if out == None {
+                        let symbol: String = line.chars().nth(num_matching).unwrap_or(' ').into();
+                        match cc.get_play_char(symbol.as_str()) {
+                            Some(v) => Some((symbol, v.clone())),
+                            None => None,
+                        }
+                    } else {
+                        out
+                    }
                 }
-              }
-            },
+            }
         }
         Task::none()
     }
 
     fn view(&self) -> Element<'_, Message> {
-      if self.text_controller_data.lyrics.len()>0{
-        let num_matching = self
-            .input
-            .chars()
-            .zip(self.text_controller_data.lyrics[self.text_controller_data.current_line].chars())
-            .take_while(|(a, b)| a == b)
-            .count();
-        let pre: Column<_> = self.text_controller_data.lyrics
-            [0..self.text_controller_data.current_line]
-            .iter()
-            .fold(Column::new(), |col, v| {
-                col.push(text(v).style(|_| text::Style {
-                    color: Some(COMPLETED_COLOR),
-                }))
-            });
-        let post: Column<_> = self.text_controller_data.lyrics
-            [self.text_controller_data.current_line + 1..]
-            .iter()
-            .fold(Column::new(), |col, v| {
-                col.push(text(v).style(|_| text::Style {
-                    color: Some(UPCOMING_COLOR),
-                }))
-            });
-        let target = &self.text_controller_data.lyrics[self.text_controller_data.current_line];
-        let matching_substr:String= target.chars().take(num_matching).collect();
-        let remaining_substr:String = target.chars().skip(num_matching).collect();
-        let mut info_row:Row<_> = row![text(format!("Score: {}", self.score)),Space::with_width(40)];
-        match &self.char_bonus{
-            Some((symbol,v)) => {
-              info_row = info_row.push(text(format!("{} -> {:?}",symbol,v)));
-            },
-            None => (),
-        }
-        let mut songs_ui = Column::new().padding(10).spacing(10);
-        for song in &self.spotify_data.songs_list {
-            songs_ui = songs_ui.push(
-                button(text(song.name.clone() + " by " + song.artist.as_str()))
-                    .on_press(Message::SpotifyChangeSong(song.clone())),
-            )
-        }
-        if let SpotifyControllerHandle::Ready(_controller) = &self.spotify_controller_handle {
-            let mut devices_ui = Column::new().padding(10).spacing(10);
-            for device in &self.spotify_data.devices_list {
-                devices_ui = devices_ui.push(
-                    button(text(device.0.clone()))
-                        .on_press(Message::SpotifySetDevice(device.1.clone())),
-                );
+        if self.text_controller_data.lyrics.len() > 0 {
+            let num_matching = self
+                .input
+                .chars()
+                .zip(
+                    self.text_controller_data.lyrics[self.text_controller_data.current_line]
+                        .chars(),
+                )
+                .take_while(|(a, b)| a == b)
+                .count();
+            let pre: Column<_> = self.text_controller_data.lyrics
+                [0..self.text_controller_data.current_line]
+                .iter()
+                .fold(Column::new(), |col, v| {
+                    col.push(text(v).style(|_| text::Style {
+                        color: Some(COMPLETED_COLOR),
+                    }))
+                });
+            let post: Column<_> = self.text_controller_data.lyrics
+                [self.text_controller_data.current_line + 1..]
+                .iter()
+                .fold(Column::new(), |col, v| {
+                    col.push(text(v).style(|_| text::Style {
+                        color: Some(UPCOMING_COLOR),
+                    }))
+                });
+            let target = &self.text_controller_data.lyrics[self.text_controller_data.current_line];
+            let matching_substr: String = target.chars().take(num_matching).collect();
+            let remaining_substr: String = target.chars().skip(num_matching).collect();
+            let mut info_row: Row<_> = row![
+                text(format!("Score: {}", self.score)),
+                Space::with_width(40)
+            ];
+            match &self.char_bonus {
+                Some((symbol, v)) => {
+                    info_row = info_row.push(text(format!("{} -> {:?}", symbol, v)));
+                }
+                None => (),
             }
+            let mut songs_ui = Column::new().padding(10).spacing(10);
+            for song in &self.spotify_data.songs_list {
+                songs_ui = songs_ui.push(
+                    button(text(song.name.clone() + " by " + song.artist.as_str()))
+                        .on_press(Message::SpotifyChangeSong(song.clone())),
+                )
+            }
+            if let SpotifyControllerHandle::Ready(_controller) = &self.spotify_controller_handle {
+                let mut devices_ui = Column::new().padding(10).spacing(10);
+                for device in &self.spotify_data.devices_list {
+                    devices_ui = devices_ui.push(
+                        button(text(device.0.clone()))
+                            .on_press(Message::SpotifySetDevice(device.1.clone())),
+                    );
+                }
 
-            row![
-                column![
-                    text("Active Spotify Devices"),
-                    row![button("Refresh Spotify Devices").on_press(Message::SpotifyDevices),button("Hide Devices").on_press(Message::HideDevices)],
-                    devices_ui,
-                    text("Spotify Playback Controller"),
-                    row![
-                        button("Play").on_press(Message::SpotifyPlay),
-                        button("Pause").on_press(Message::SpotifyPause)
+                row![
+                    column![
+                        text("Active Spotify Devices"),
+                        row![
+                            button("Refresh Spotify Devices").on_press(Message::SpotifyDevices),
+                            button("Hide Devices").on_press(Message::HideDevices)
+                        ],
+                        devices_ui,
+                        text("Spotify Playback Controller"),
+                        row![
+                            button("Play").on_press(Message::SpotifyPlay),
+                            button("Pause").on_press(Message::SpotifyPause)
+                        ],
+                        text("Text Style"),
+                        row![
+                            button("LRCLIB").on_press(Message::SetLRCLIBText),
+                            // button("Github").on_press(Message::SetGithubText),
+                            button("Source File").on_press(Message::SetSourceFileText),
+                        ],
+                        pre,
+                        row![
+                            text(matching_substr).style(|_| text::Style {
+                                color: Some(MATCHING_COLOR)
+                            }),
+                            text(remaining_substr).style(|_| text::Style {
+                                color: Some(PREPARE_COLOR)
+                            }),
+                        ],
+                        post,
+                        text_input("Start typing...", &self.input)
+                            .on_input(Message::InputChanged)
+                            .on_submit(Message::InputSubmitted),
+                        info_row,
+                        row![button("Skip Line").on_press(Message::SkipLine)]
                     ],
-                    text("Text Style"),
-                    row![
-                        button("LRCLIB").on_press(Message::SetLRCLIBText),
-                        // button("Github").on_press(Message::SetGithubText),
-                        button("Source File").on_press(Message::SetSourceFileText),
-                    ],
-                    pre,
-                    row![
-                        text(matching_substr).style(|_| text::Style {
-                            color: Some(MATCHING_COLOR)
-                        }),
-                        text(remaining_substr).style(|_| text::Style {
-                            color: Some(PREPARE_COLOR)
-                        }),
-                    ],
-                    post,
-                    text_input("Start typing...", &self.input)
-                        .on_input(Message::InputChanged)
-                        .on_submit(Message::InputSubmitted),
-                    info_row,
-                    row![button("Skip Line").on_press(Message::SkipLine)]
-                ],
-                column![
-                    text("Songs"),
-                    row![    
-                        text_input("Search", &self.query)
-                            .width(Length::Fixed(300.0))
-                            .on_input(Message::QueryChanged)
-                            .on_submit(Message::QuerySubmitted),
-                        button("Search").on_press(Message::QuerySubmitted)
-                    ],
-                    songs_ui,
-                ]
-            ]
-            .into()
-        } else {
-            row![
-                column![
-                    text("Text Style"),
-                    row![
-                        button("LRCLIB").on_press(Message::SetLRCLIBText),
-                        // button("Github").on_press(Message::SetGithubText),
-                        button("Source File").on_press(Message::SetSourceFileText),
-                    ],
-                    row![
-                        text("Loading Spotify..."),
-                        button("Retry").on_press(Message::InitializeStart)
-                    ],
-                    text(""),
-                    pre,
-                    row![
-                        text(matching_substr).style(|_| text::Style {
-                            color: Some(MATCHING_COLOR)
-                        }),
-                        text(remaining_substr).style(|_| text::Style {
-                            color: Some(PREPARE_COLOR)
-                        }),
-                    ],
-                    post,
-                    text_input("Start typing...", &self.input).on_input(Message::InputChanged),
-                    text(format!("Score: {}", self.score)),
-                ],
-                column![
-                    // row![
+                    column![
                         text("Songs"),
-                    //     text_input("Search", &self.query)
-                    //         .on_input(Message::QueryChanged)
-                    //         .on_submit(Message::QuerySubmitted),
-                    //     button("Search").on_press(Message::QuerySubmitted)
-                    // ],
-                    songs_ui,
+                        row![
+                            text_input("Search", &self.query)
+                                .width(Length::Fixed(300.0))
+                                .on_input(Message::QueryChanged)
+                                .on_submit(Message::QuerySubmitted),
+                            button("Search").on_press(Message::QuerySubmitted)
+                        ],
+                        songs_ui,
+                    ]
                 ]
-            ]
-            .into()
+                .into()
+            } else {
+                row![
+                    column![
+                        text("Text Style"),
+                        row![
+                            button("LRCLIB").on_press(Message::SetLRCLIBText),
+                            // button("Github").on_press(Message::SetGithubText),
+                            button("Source File").on_press(Message::SetSourceFileText),
+                        ],
+                        row![
+                            text("Loading Spotify..."),
+                            button("Retry").on_press(Message::InitializeStart)
+                        ],
+                        text(""),
+                        pre,
+                        row![
+                            text(matching_substr).style(|_| text::Style {
+                                color: Some(MATCHING_COLOR)
+                            }),
+                            text(remaining_substr).style(|_| text::Style {
+                                color: Some(PREPARE_COLOR)
+                            }),
+                        ],
+                        post,
+                        text_input("Start typing...", &self.input).on_input(Message::InputChanged),
+                        text(format!("Score: {}", self.score)),
+                    ],
+                    column![
+                        // row![
+                        text("Songs"),
+                        //     text_input("Search", &self.query)
+                        //         .on_input(Message::QueryChanged)
+                        //         .on_submit(Message::QuerySubmitted),
+                        //     button("Search").on_press(Message::QuerySubmitted)
+                        // ],
+                        songs_ui,
+                    ]
+                ]
+                .into()
+            }
+        } else {
+            column![text("Loading")].into()
         }
-      } else {
-        column![text("Loading")].into()
-      }
     }
 
     fn subscription(&self) -> Subscription<Message> {
