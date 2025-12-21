@@ -27,4 +27,8 @@ cargo run
 
 ## Tools used
 
-This project is built in rust, using iced for windowing, reqwest and rspotify for API calls, as well as some other common rust dependencies for logging, serialization, and multithreading. It's loosely inspired by the website [keybr.com](keybr.com). I hope to add more progression features and feedback in the future to better align with that as a typing education tool. As mentioned above it uses the Spotify API for playback and searching of songs, and it also uses LRCLIB to fetch the lyrics you type along to.
+This project is built in rust, using [iced](iced.rs) for windowing, [reqwest](https://crates.io/crates/reqwest) and [rspotify](https://crates.io/crates/rspotify) for API calls, as well as some other common rust dependencies for logging, serialization, and multithreading. 
+
+It's loosely inspired by the website [keybr.com](keybr.com). I hope to add more progression features and feedback in the future to better align with that as a typing education tool.
+
+As mentioned above it uses the Spotify API for playback and searching of songs, and it also uses LRCLIB to fetch the lyrics you type along to.
